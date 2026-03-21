@@ -1,28 +1,28 @@
-  #include <Stepper.h>
+#include <AccelStepper.h>
 
-// The 28BYJ-48 has 2048 steps per full internal revolution
-const int stepsPerRevolution = 2048;
+// Define the motor interface type (8-step mode)
+#define MotorInterfaceType 8
 
-// Initialize the stepper library on pins 5, 3, 4, 2:
-// We swap pins 3 and 4 because of the 28BYJ-48's internal wiring pattern
-Stepper myStepper(stepsPerRevolution, 5, 3, 4, 2);
+// Initialize with the sequence 1-3-2-4 for the ULN2003 driver
+// Using your pins: 5, 3, 4, 2
+AccelStepper stepper(MotorInterfaceType, 5, 3, 4, 2);
 
 void setup() {
-  // Set the speed to 10-15 RPM (these motors are slow but high torque)
-  myStepper.setSpeed(10);
+  // Max speed for these motors is usually around 500-1000 
+  // steps per second with acceleration.
+  stepper.setMaxSpeed(1000.0);
+  stepper.setAcceleration(500.0);
   
-  // Initialize serial for debugging
-  Serial.begin(9600);
+  // Set a target position (e.g., 2 revolutions)
+  stepper.moveTo(4096); 
 }
 
 void loop() {
-  // Step one revolution in one direction:
-  Serial.println("Clockwise");
-  myStepper.step(stepsPerRevolution);
-  delay(500);
+  // If the motor reaches the target, tell it to go back
+  if (stepper.distanceToGo() == 0) {
+    stepper.moveTo(-stepper.currentPosition());
+  }
 
-  // Step one revolution in the other direction:
-  Serial.println("Counter-clockwise");
-  myStepper.step(-stepsPerRevolution);
-  delay(500);
+  // This MUST be called as often as possible to keep the motor moving
+  stepper.run();
 }
