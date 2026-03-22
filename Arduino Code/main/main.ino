@@ -1,28 +1,53 @@
-#include <AccelStepper.h>
+// Pin Assignments
+const int stepPin = 5;
+const int dirPin = 6;
+const int enPin = 8;
+const int ms1Pin = 2;
+const int ms2Pin = 3;
+const int ms3Pin = 4;
 
-// Define the motor interface type (8-step mode)
-#define MotorInterfaceType 8
-
-// Initialize with the sequence 1-3-2-4 for the ULN2003 driver
-// Using your pins: 5, 3, 4, 2
-AccelStepper stepper(MotorInterfaceType, 5, 3, 4, 2);
+int stepDelay = 800;
+bool isMoving = false; // Tracks if the motor should be stepping
 
 void setup() {
-  // Max speed for these motors is usually around 500-1000 
-  // steps per second with acceleration.
-  stepper.setMaxSpeed(1000.0);
-  stepper.setAcceleration(500.0);
+  Serial.begin(9600); // Start Serial communication
+
+  pinMode(stepPin, OUTPUT);
+  pinMode(dirPin, OUTPUT);
+  pinMode(enPin, OUTPUT);
+  pinMode(ms1Pin, OUTPUT);
+  pinMode(ms2Pin, OUTPUT);
+  pinMode(ms3Pin, OUTPUT);
   
-  // Set a target position (e.g., 2 revolutions)
-  stepper.moveTo(4096); 
+  digitalWrite(enPin, LOW); // Enable driver
+  digitalWrite(ms1Pin, LOW); // Full step
+  digitalWrite(ms2Pin, LOW);
+  digitalWrite(ms3Pin, LOW);
 }
 
 void loop() {
-  // If the motor reaches the target, tell it to go back
-  if (stepper.distanceToGo() == 0) {
-    stepper.moveTo(-stepper.currentPosition());
+  // Check if Python sent a command
+  if (Serial.available() > 0) {
+    char command = Serial.read();
+
+    if (command == 'F') {
+      digitalWrite(dirPin, LOW);
+      isMoving = true;
+    } 
+    else if (command == 'B') {
+      digitalWrite(dirPin, HIGH);
+      isMoving = true;
+    } 
+    else if (command == 'S') {
+      isMoving = false;
+    }
   }
 
-  // This MUST be called as often as possible to keep the motor moving
-  stepper.run();
+  // If we are in a moving state, take one step
+  if (isMoving) {
+    digitalWrite(stepPin, HIGH);
+    delayMicroseconds(stepDelay);
+    digitalWrite(stepPin, LOW);
+    delayMicroseconds(stepDelay);
+  }
 }
