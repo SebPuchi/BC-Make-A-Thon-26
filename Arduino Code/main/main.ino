@@ -1,28 +1,76 @@
-#include <AccelStepper.h>
+#include <Servo.h>
 
-// Define the motor interface type (8-step mode)
-#define MotorInterfaceType 8
+// Pin Assignments
+const int stepPin = 5;
+const int dirPin = 6;
+const int enPin = 8;
+const int ms1Pin = 2;
+const int ms2Pin = 3;
+const int ms3Pin = 4;
+const int servoPin = 7; 
 
-// Initialize with the sequence 1-3-2-4 for the ULN2003 driver
-// Using your pins: 5, 3, 4, 2
-AccelStepper stepper(MotorInterfaceType, 5, 3, 4, 2);
+Servo myServo;
+bool servoPos = false; 
+
+// --- CONFIGURATION ---
+int stepDelay = 800;      
+int stepsPerPress = 200;  
+// ----------------------
 
 void setup() {
-  // Max speed for these motors is usually around 500-1000 
-  // steps per second with acceleration.
-  stepper.setMaxSpeed(1000.0);
-  stepper.setAcceleration(500.0);
+  Serial.begin(9600);
+
+  myServo.attach(servoPin);
+  // Setting 90 as the "Home" position is usually best for 180-degree movement
+  myServo.write(90); 
+
+  pinMode(stepPin, OUTPUT);
+  pinMode(dirPin, OUTPUT);
+  pinMode(enPin, OUTPUT);
+  pinMode(ms1Pin, OUTPUT);
+  pinMode(ms2Pin, OUTPUT);
+  pinMode(ms3Pin, OUTPUT);
   
-  // Set a target position (e.g., 2 revolutions)
-  stepper.moveTo(4096); 
+  digitalWrite(enPin, LOW); 
+  digitalWrite(ms1Pin, LOW); 
+  digitalWrite(ms2Pin, LOW);
+  digitalWrite(ms3Pin, LOW);
+}
+
+void moveSteps(int steps, int direction) {
+  digitalWrite(dirPin, direction);
+  for (int i = 0; i < steps; i++) {
+    digitalWrite(stepPin, HIGH);
+    delayMicroseconds(stepDelay);
+    digitalWrite(stepPin, LOW);
+    delayMicroseconds(stepDelay);
+  }
 }
 
 void loop() {
-  // If the motor reaches the target, tell it to go back
-  if (stepper.distanceToGo() == 0) {
-    stepper.moveTo(-stepper.currentPosition());
-  }
+  if (Serial.available() > 0) {
+    char command = Serial.read();
 
-  // This MUST be called as often as possible to keep the motor moving
-  stepper.run();
+    if (command == 'F') {
+      moveSteps(stepsPerPress, LOW);
+      Serial.println("Done Forward");
+    } 
+    else if (command == 'B') {
+      moveSteps(stepsPerPress, HIGH);
+      Serial.println("Done Backward");
+    }
+    else if (command == 'X') {
+      if (!servoPos) {
+        // Move to 180 degrees (far "right")
+        myServo.write(180);
+        servoPos = true;
+        Serial.println("Servo to 180");
+      } else {
+        // Return to 90 degrees (center)
+        myServo.write(90);
+        servoPos = false;
+        Serial.println("Servo to 90");
+      }
+    }
+  }
 }
